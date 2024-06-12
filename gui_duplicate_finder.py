@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from duplicate_finder import find_duplicates
@@ -24,6 +25,14 @@ def show_duplicates():
     else:
         messagebox.showinfo("No Duplicates", "No duplicate files found.")
 
+def clean_up():
+    db_path = "file_hashes.db"
+    if os.path.exists(db_path):
+        os.remove(db_path)
+        messagebox.showinfo("Cleanup", "Database has been deleted.")
+    else:
+        messagebox.showinfo("Cleanup", "No database found to delete.")
+
 app = tk.Tk()
 app.title("Duplicate Finder")
 
@@ -38,5 +47,8 @@ select_button.pack(pady=5)
 
 show_button = tk.Button(frame, text="Show Duplicates", command=show_duplicates)
 show_button.pack(pady=5)
+
+clean_button = tk.Button(frame, text="Clean Up", command=clean_up)
+clean_button.pack(pady=5)
 
 app.mainloop()
