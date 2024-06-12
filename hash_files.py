@@ -1,56 +1,5 @@
-import os
-import hashlib
-import sqlite3
-
-def create_db(db_path):
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS file_hashes (
-            hash TEXT PRIMARY KEY,
-            paths TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-def compute_hash(file_path):
-    hasher = hashlib.md5()
-    with open(file_path, 'rb') as f:
-        buf = f.read()
-        hasher.update(buf)
-    return hasher.hexdigest()
-
-def store_hash_in_db(db_path, file_hash, file_path):
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    c.execute('SELECT paths FROM file_hashes WHERE hash = ?', (file_hash,))
-    row = c.fetchone()
-    if row:
-        paths = row[0].split(';')
-        if file_path not in paths:
-            paths.append(file_path)
-            c.execute('UPDATE file_hashes SET paths = ? WHERE hash = ?', (';'.join(paths), file_hash))
-    else:
-        c.execute('INSERT INTO file_hashes (hash, paths) VALUES (?, ?)', (file_hash, file_path))
-    conn.commit()
-    conn.close()
-
-def find_duplicates(directory, db_path):
-    create_db(db_path)
-    for root, _, files in os.walk(directory):
-        for file in files:
-            file_path = os.path.join(root, file)
-            file_hash = compute_hash(file_path)
-            store_hash_in_db(db_path, file_hash, file_path)
-
-def get_duplicates(db_path):
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    c.execute('SELECT * FROM file_hashes')
-    duplicates = {row[0]: row[1].split(';') for row in c.fetchall() if len(row[1].split(';')) > 1}
-    conn.close()
-    return duplicates
+from duplicate_finder import find_duplicates
+from output_duplicates import get_duplicates
 
 if __name__ == "__main__":
     import argparse
