@@ -15,6 +15,15 @@ def select_directory():
         else:
             messagebox.showinfo("No Duplicates", "No duplicate files found.")
 
+def show_duplicates():
+    db_path = "file_hashes.db"
+    duplicates = get_duplicates(db_path)
+    if duplicates:
+        result = "\n".join([f"Hash: {file_hash}\n" + "\n".join([f" - {path}" for path in paths]) for file_hash, paths in duplicates.items()])
+        messagebox.showinfo("Duplicates Found", result)
+    else:
+        messagebox.showinfo("No Duplicates", "No duplicate files found.")
+
 app = tk.Tk()
 app.title("Duplicate Finder")
 
@@ -26,5 +35,8 @@ label.pack(pady=5)
 
 select_button = tk.Button(frame, text="Select Directory", command=select_directory)
 select_button.pack(pady=5)
+
+show_button = tk.Button(frame, text="Show Duplicates", command=show_duplicates)
+show_button.pack(pady=5)
 
 app.mainloop()
