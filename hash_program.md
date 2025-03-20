@@ -1,4 +1,4 @@
-Sure! Here's an outline for a paper on creating a Python program that takes the path to a program as an argument and puts data into a Postgres database:
+# Hash Program Outline
 
 I. Introduction
 
