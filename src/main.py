@@ -1,8 +1,13 @@
-
-# filepath: /home/echeadle/Aug_2024/Projects/dup_files/src/main.py
+import argparse
 from duplicate_finder import find_duplicates
 
+def main():
+    parser = argparse.ArgumentParser(description="Find duplicate files in a directory.")
+    parser.add_argument("directory", help="Directory to scan for duplicates")
+    parser.add_argument("db_path", help="Path to SQLite database file")
+    args = parser.parse_args()
+
+    find_duplicates(args.directory, args.db_path)
+
 if __name__ == "__main__":
-    directory = "/path/to/directory"
-    db_path = "/path/to/database.db"
-    find_duplicates(directory, db_path)
+    main()
