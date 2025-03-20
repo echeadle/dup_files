@@ -1,2 +1,6 @@
 # dup_files
-Program written wtih the help by Aider to find duplicate files
+
+1. Added Error Handling
+2. Added Logging
+3. Added Batch Processing to handle large directories easily.
+4. Optimized database to reduce number of writes.
