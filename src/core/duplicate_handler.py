@@ -13,11 +13,9 @@ def store_batch_in_db(db_path, batch):
         logging.error(f"Error storing batch in database: {e}")
 
 def find_duplicates(directory, db_path, filetypes_path=None):
-    """Scans a directory, filters by filetypes, and stores duplicates in the DB."""
+    """Scans a directory, filters by filetypes, and stores hashes and paths in normalized DB."""
     allowed_exts = load_filetypes(filetypes_path) if filetypes_path else None
     create_db(db_path)
-    batch = []
-    batch_size = 100
 
     for file_path in walk_files(directory):
         _, ext = os.path.splitext(file_path)
@@ -26,10 +24,4 @@ def find_duplicates(directory, db_path, filetypes_path=None):
 
         file_hash = compute_hash(file_path)
         if file_hash:
-            batch.append((file_hash, file_path))
-            if len(batch) >= batch_size:
-                store_batch_in_db(db_path, batch)
-                batch.clear()
-
-    if batch:
-        store_batch_in_db(db_path, batch)
+            store_hash_in_db(db_path, file_hash, file_path)
