@@ -33,3 +33,35 @@ def test_create_and_store_in_db():
 
     finally:
         os.remove(db_path)
+
+
+def test_duplicate_paths_append_to_db():
+    # Create a temporary SQLite database
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_db:
+        db_path = tmp_db.name
+
+    try:
+        create_db(db_path)
+
+        test_hash = "dup123"
+        path1 = "/file/a.txt"
+        path2 = "/file/b.txt"
+
+        store_hash_in_db(db_path, test_hash, path1)
+        store_hash_in_db(db_path, test_hash, path2)
+
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT paths FROM file_hashes WHERE hash=?", (test_hash,))
+        result = cursor.fetchone()[0]
+        conn.close()
+
+        # Convert semicolon-separated paths to list
+        path_list = [p.strip() for p in result.split(";")]
+
+        assert path1 in path_list, f"{path1} missing from {path_list}"
+        assert path2 in path_list, f"{path2} missing from {path_list}"
+        assert len(path_list) == 2, f"Expected 2 paths, got: {path_list}"
+
+    finally:
+        os.remove(db_path)
