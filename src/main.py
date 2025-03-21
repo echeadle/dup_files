@@ -1,5 +1,5 @@
 import argparse
-from src.duplicate_finder import find_duplicates
+from duplicate_finder import find_duplicates
 import os
 import sys
 
