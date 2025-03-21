@@ -1,7 +1,9 @@
 import argparse
-from duplicate_finder import find_duplicates
 import os
 import sys
+
+from core.duplicate_handler import find_duplicates
+from core.discovery import run_discovery_mode
 
 def main():
     parser = argparse.ArgumentParser(description="Duplicate file finder with discovery mode and filetype filtering.")
@@ -16,16 +18,17 @@ def main():
         print(f"Error: {args.directory} is not a valid directory.")
         sys.exit(1)
 
-    if not args.discover and not args.db_path:
-        print("Error: --db_path is required unless --discover is used.")
-        sys.exit(1)
-
-    find_duplicates(
-        directory=args.directory,
-        db_path=args.db_path,
-        filetypes_path=args.filetypes,
-        discover=args.discover
-    )
+    if args.discover:
+        run_discovery_mode(args.directory, log_file_path="discovered_filetypes.log")
+    else:
+        if not args.db_path:
+            print("Error: --db_path is required unless --discover is used.")
+            sys.exit(1)
+        find_duplicates(
+            directory=args.directory,
+            db_path=args.db_path,
+            filetypes_path=args.filetypes
+        )
 
 if __name__ == "__main__":
     main()
