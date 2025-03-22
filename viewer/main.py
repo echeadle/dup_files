@@ -6,14 +6,18 @@ from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
-
+from fastapi import Request, UploadFile, File, Form
+from fastapi.responses import RedirectResponse
+import shutil
 app = FastAPI()
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = BASE_DIR / "templates"
 DB_PATH = BASE_DIR.parent / "test_hashes.db"  # 👈 adjust if needed
+UPLOAD_DB_PATH = "viewer/uploads/uploaded.db"  # 👈 adjust if needed
 
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 def get_duplicate_groups(db_path):
@@ -80,10 +84,26 @@ def export_markdown():
 from fastapi.responses import JSONResponse
 
 @app.get("/export/json")
-def export_json():
+def export_json(): # or any # or anywhere else you'd likewhere else you'd like
     duplicates = get_duplicate_groups(DB_PATH)
     return JSONResponse(content=duplicates, headers={
         "Content-Disposition": "attachment; filename=duplicates.json"
     })
+ # or anywhere else you'd like
+
+@app.post("/upload") # or anywhere else you'd like
+async def upload_db(request: Request, db_file: UploadFile = File(...)):
+    try:
+        os.makedirs(os.path.dirname(UPLOAD_DB_PATH), exist_ok=True)
+
+        with open(UPLOAD_DB_PATH, "wb") as out_file:
+            shutil.copyfileobj(db_file.file, out_file)
+
+        global DB_PATH
+        DB_PATH = UPLOAD_DB_PATH
+
+        return RedirectResponse(url="/", status_code=303)
+    except Exception as e:
+        return f"Error uploading file: {e}"
 
 
