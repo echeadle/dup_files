@@ -44,7 +44,10 @@
           Avg/Hash: {{ summary.avg }}
         </div>
 
+        <!-- Clear Filters Button -->
         <button id="clearFilterBtn" class="btn btn-sm btn-outline-secondary mb-2 w-100">Clear Filters</button>
+
+        <!-- Sidebar hash list -->
         <ul class="list-group small" id="sidebarList">
           {% for hash, paths in duplicates.items() %}
             <li class="list-group-item d-flex justify-content-between align-items-center sidebar-item"
@@ -54,6 +57,13 @@
             </li>
           {% endfor %}
         </ul>
+
+        <!-- 📚 Logs Section -->
+        <div class="mt-4">
+          <strong>📚 Logs</strong><br>
+          <a href="/logs/deleted" class="btn btn-sm btn-outline-danger w-100 mb-2">🗑️ Deleted Log</a>
+          <a href="/logs/exported" class="btn btn-sm btn-outline-primary w-100">📦 Exported Log</a>
+        </div>
       </div>
     </div>
 
@@ -162,28 +172,30 @@
   }
 
   function submitFileAction(actionType) {
+    const checkboxes = document.querySelectorAll(".mark-checkbox:checked");
+    if (checkboxes.length === 0) {
+      alert("⚠️ Please select at least one file before continuing.");
+      return;
+    }
+  
     const form = document.getElementById("fileActionForm");
     document.getElementById("fileAction").value = actionType;
-    document.getElementById("previewMode").value = "true"; // enable preview mode
+    document.getElementById("previewMode").value = "true";
     form.submit();
   }
+  
 
   document.addEventListener("DOMContentLoaded", function () {
     const msg = "{{ toast_msg }}"
-    if (msg === "reset") {
-      showToast("✅ Database reset to default");
-    } else if (msg === "upload") {
-      showToast("✅ Database uploaded successfully");
-    } else if (msg === "delete") {
-      showToast("🗑️ Files deleted");
-    } else if (msg === "export") {
-      showToast("📦 Files exported");
-    }
+    if (msg === "reset") showToast("✅ Database reset to default");
+    else if (msg === "upload") showToast("✅ Database uploaded successfully");
+    else if (msg === "delete") showToast("🗑️ Files deleted");
+    else if (msg === "export") showToast("📦 Files exported");
+    else if (msg === "empty") showToast("⚠️ No files selected.");
+
 
     document.querySelectorAll("a[href^='/export/']").forEach(link => {
-      link.addEventListener("click", () => {
-        showToast("✅ Export started");
-      });
+      link.addEventListener("click", () => showToast("✅ Export started"));
     });
 
     const searchInput = document.getElementById("searchInput");
@@ -201,12 +213,9 @@
       hashCards.forEach(card => {
         const hash = card.querySelector(".card-title").textContent.toLowerCase();
         const paths = Array.from(card.querySelectorAll("li")).map(li => li.textContent.toLowerCase());
-
         const matchesSearch = hash.includes(searchText) || paths.some(p => p.includes(searchText));
         const matchesSidebar = !sidebarFilter || hash.includes(sidebarFilter);
-
-        const shouldShow = matchesSearch && matchesSidebar;
-        card.style.display = shouldShow ? "block" : "none";
+        card.style.display = matchesSearch && matchesSidebar ? "block" : "none";
       });
 
       const visible = hashCards.filter(card => card.style.display !== "none");
@@ -226,12 +235,9 @@
       item.addEventListener("click", function () {
         const clickedHash = this.dataset.hash.toLowerCase();
         const alreadyActive = item.classList.contains("active");
-
         sidebarFilter = alreadyActive ? null : clickedHash;
-
         document.querySelectorAll(".sidebar-item").forEach(i => i.classList.remove("active"));
         if (!alreadyActive) item.classList.add("active");
-
         filterAndSortCards();
       });
     });
