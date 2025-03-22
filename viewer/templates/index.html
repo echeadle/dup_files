@@ -95,6 +95,7 @@
       <!-- Delete/Export Form -->
       <form method="POST" action="/file-action" id="fileActionForm">
         <input type="hidden" name="action" id="fileAction" value="">
+        <input type="hidden" name="preview" id="previewMode" value="false">
 
         <!-- Delete/Export Buttons -->
         <div class="mb-3 d-flex gap-2">
@@ -162,8 +163,8 @@
 
   function submitFileAction(actionType) {
     const form = document.getElementById("fileActionForm");
-    const actionInput = document.getElementById("fileAction");
-    actionInput.value = actionType;
+    document.getElementById("fileAction").value = actionType;
+    document.getElementById("previewMode").value = "true"; // enable preview mode
     form.submit();
   }
 

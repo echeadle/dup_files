@@ -1,12 +1,12 @@
-from fastapi import FastAPI, Request, UploadFile, File
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, Request, UploadFile, File, Form
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 import shutil
 import os
 from collections import Counter
-
+from typing import List, Optional
 from viewer.utils import load_duplicates  # Make sure this is your function to read the DB
 
 app = FastAPI()
@@ -102,6 +102,43 @@ async def delete_or_export(request: Request):
 
     # You can pass a summary back or redirect with query
     return RedirectResponse(url="/?msg=" + action, status_code=303)
+
+
+
+EXPORT_DIR = Path("exported")
+EXPORT_DIR.mkdir(exist_ok=True)
+
+@app.post("/file-action", response_class=HTMLResponse)
+async def handle_file_action(request: Request,
+                             paths: List[str] = Form(...),
+                             action: str = Form(...),
+                             preview: Optional[str] = Form(None),
+                             confirm: Optional[str] = Form(None)):
+    if preview == "true" and confirm != "true":
+        # Show preview screen
+        return templates.TemplateResponse("preview.html", {
+            "request": request,
+            "action": action,
+            "paths": paths
+        })
+
+    # Perform actual action
+    successful = []
+    failed = []
+
+    for path in paths:
+        try:
+            if action == "delete":
+                os.remove(path)
+            elif action == "export":
+                shutil.copy(path, EXPORT_DIR / Path(path).name)
+            successful.append(path)
+        except Exception as e:
+            failed.append((path, str(e)))
+
+    # TODO: You could write to a log file here if needed
+
+    return RedirectResponse(url=f"/?msg={action}", status_code=303)
 
 
 
