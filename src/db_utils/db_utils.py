@@ -29,6 +29,8 @@ def store_hash_in_db(db_path, file_hash, file_path):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
 
+    print(f"Inserting hash: {file_hash}, path: {file_path}")  # 👈 Add this for debugging
+
     # Step 1: Insert hash if it doesn't exist
     c.execute('INSERT OR IGNORE INTO hashes (hash) VALUES (?)', (file_hash,))
 
@@ -37,8 +39,8 @@ def store_hash_in_db(db_path, file_hash, file_path):
     exists = c.fetchone()
 
     if not exists:
-        # Step 3: Insert the path for this hash
         c.execute('INSERT INTO file_paths (hash, path) VALUES (?, ?)', (file_hash, file_path))
 
     conn.commit()
     conn.close()
+
