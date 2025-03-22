@@ -23,6 +23,9 @@
       background-color: #e7f1ff;
       font-weight: bold;
     }
+    .file-path .text-danger {
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -32,6 +35,15 @@
     <div class="col-md-3">
       <div class="bg-white border rounded p-3 mb-3 sticky-top" style="top: 1rem;">
         <h6 class="text-primary">📊 Hash Groups</h6>
+
+        <!-- Summary -->
+        <div class="mb-3 small">
+          <strong>📈 Summary</strong><br>
+          Hashes: {{ summary.hashes }}<br>
+          Files: {{ summary.files }}<br>
+          Avg/Hash: {{ summary.avg }}
+        </div>
+
         <button id="clearFilterBtn" class="btn btn-sm btn-outline-secondary mb-2 w-100">Clear Filters</button>
         <ul class="list-group small" id="sidebarList">
           {% for hash, paths in duplicates.items() %}
@@ -47,15 +59,29 @@
 
     <!-- Main Content -->
     <div class="col-md-9">
-      <h1 class="mb-4">📂 Duplicate File Viewer</h1>
+      <h1 class="mb-2">📂 Duplicate File Viewer</h1>
+      <p class="text-muted">
+        📦 Active database: <strong>{{ db_filename }}</strong>
+        {% if is_uploaded %}
+          <span class="badge bg-success">Uploaded</span>
+        {% else %}
+          <span class="badge bg-secondary">Default</span>
+        {% endif %}
+      </p>
 
-      <!-- DB Upload Form -->
-      <form class="mb-3" method="POST" action="/upload" enctype="multipart/form-data">
-        <div class="input-group">
-          <input class="form-control" type="file" name="db_file" accept=".db" required>
-          <button class="btn btn-outline-success" type="submit">📂 Upload DB</button>
-        </div>
-      </form>
+      <!-- Upload + Reset Buttons -->
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <form method="POST" action="/upload" enctype="multipart/form-data">
+          <div class="input-group">
+            <input class="form-control" type="file" name="db_file" accept=".db" required>
+            <button class="btn btn-outline-success" type="submit">📂 Upload DB</button>
+          </div>
+        </form>
+
+        <form method="POST" action="/reset-db">
+          <button class="btn btn-outline-warning">🔄 Reset to Default DB</button>
+        </form>
+      </div>
 
       <!-- Export Buttons -->
       <div class="mb-3">
@@ -66,47 +92,59 @@
         </div>
       </div>
 
-      <!-- Search and Sort -->
-      <div class="row mb-3">
-        <div class="col-md-6">
-          <input type="text" id="searchInput" class="form-control" placeholder="🔍 Search by path or hash...">
-        </div>
-        <div class="col-md-6 text-end">
-          <select id="sortSelect" class="form-select w-auto d-inline">
-            <option value="desc">🔽 Most duplicates first</option>
-            <option value="asc">🔼 Fewest duplicates first</option>
-          </select>
-        </div>
-      </div>
+      <!-- Delete/Export Form -->
+      <form method="POST" action="/file-action" id="fileActionForm">
+        <input type="hidden" name="action" id="fileAction" value="">
 
-      <!-- Duplicate Cards -->
-      {% if duplicates %}
-        {% for hash, paths in duplicates.items() %}
-          <div class="card hash-card">
-            <div class="card-body">
-              <h5 class="card-title">{{ hash }} <small class="text-muted">({{ paths | length }} files)</small></h5>
-              <ul class="mb-0">
-                {% for path in paths %}
-                  <li class="file-path">{{ path }}</li>
-                {% endfor %}
-              </ul>
-            </div>
+        <!-- Delete/Export Buttons -->
+        <div class="mb-3 d-flex gap-2">
+          <button type="button" class="btn btn-danger" onclick="submitFileAction('delete')">🗑️ Delete Selected</button>
+          <button type="button" class="btn btn-outline-primary" onclick="submitFileAction('export')">📦 Export Selected</button>
+        </div>
+
+        <!-- Search and Sort -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <input type="text" id="searchInput" class="form-control" placeholder="🔍 Search by path or hash...">
           </div>
-        {% endfor %}
-      {% else %}
-        <div class="alert alert-info">No duplicates found in database.</div>
-      {% endif %}
+          <div class="col-md-6 text-end">
+            <select id="sortSelect" class="form-select w-auto d-inline">
+              <option value="desc">🔽 Most duplicates first</option>
+              <option value="asc">🔼 Fewest duplicates first</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Duplicate Cards -->
+        {% if duplicates %}
+          {% for hash, paths in duplicates.items() %}
+            <div class="card hash-card">
+              <div class="card-body">
+                <h5 class="card-title">{{ hash }} <small class="text-muted">({{ paths | length }} files)</small></h5>
+                <ul class="mb-0">
+                  {% for path in paths %}
+                    <li class="file-path d-flex align-items-center">
+                      <input type="checkbox" class="form-check-input me-2 mark-checkbox" name="paths" value="{{ path }}">
+                      <span class="{% if path in duplicate_paths %}text-danger{% endif %}">{{ path }}</span>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="alert alert-info">No duplicates found in database.</div>
+        {% endif %}
+      </form>
     </div>
   </div>
 </div>
 
-<!-- Toast Notification -->
+<!-- Toast -->
 <div id="toast" class="toast align-items-center text-bg-success border-0 position-fixed bottom-0 start-50 translate-middle-x p-3"
      role="alert" aria-live="polite" aria-atomic="true" style="display: none; z-index: 9999;">
   <div class="d-flex">
-    <div class="toast-body">
-      ✅ Export started
-    </div>
+    <div class="toast-body" id="toast-body">✅ Done</div>
   </div>
 </div>
 
@@ -114,14 +152,33 @@
 <script>
   function showToast(message) {
     const toast = document.getElementById("toast");
-    toast.querySelector(".toast-body").textContent = message;
+    const toastBody = document.getElementById("toast-body");
+    toastBody.textContent = message;
     toast.style.display = "block";
     setTimeout(() => {
       toast.style.display = "none";
     }, 3000);
   }
 
+  function submitFileAction(actionType) {
+    const form = document.getElementById("fileActionForm");
+    const actionInput = document.getElementById("fileAction");
+    actionInput.value = actionType;
+    form.submit();
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    const msg = "{{ toast_msg }}"
+    if (msg === "reset") {
+      showToast("✅ Database reset to default");
+    } else if (msg === "upload") {
+      showToast("✅ Database uploaded successfully");
+    } else if (msg === "delete") {
+      showToast("🗑️ Files deleted");
+    } else if (msg === "export") {
+      showToast("📦 Files exported");
+    }
+
     document.querySelectorAll("a[href^='/export/']").forEach(link => {
       link.addEventListener("click", () => {
         showToast("✅ Export started");
