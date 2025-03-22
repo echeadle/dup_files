@@ -1,13 +1,7 @@
 import os
 import logging
 import sqlite3
-
-from core.file_scanner import walk_files, load_filetypes
-from core.file_hasher import compute_hash
-from db_utils.db_utils import create_dbimport os
-import logging
-import sqlite3
-
+import csv
 from core.file_scanner import walk_files, load_filetypes
 from core.file_hasher import compute_hash
 from db_utils.db_utils import create_db, store_hash_in_db
@@ -90,56 +84,66 @@ def print_database_contents(db_path):
         conn.close()
     except Exception as e:
         print(f"Error reading database: {e}")
-, store_hash_in_db
 
-def store_batch_in_db(db_path, batch):
-    """Stores a batch of file hashes into the database."""
-    try:
-        for file_hash, file_path in batch:
-            store_hash_in_db(db_path, file_hash, file_path)
-    except Exception as e:
-        logging.error(f"Error storing batch in database: {e}")
-
-def find_duplicates(directory, db_path, filetypes_path=None):
-    """Scans a directory, filters by filetypes, and stores hashes and paths in normalized DB."""
-    allowed_exts = load_filetypes(filetypes_path) if filetypes_path else None
-    create_db(db_path)
-
-    for file_path in walk_files(directory):
-        print(f"Checking: {file_path}")  # 🔍 DEBUG LINE
-
-        _, ext = os.path.splitext(file_path)
-        if allowed_exts:
-            print(f"Allowed extensions: {allowed_exts}")  # 🔍 DEBUG
-            print(f"File extension: {ext.lower()}")       # 🔍 DEBUG
-
-        if allowed_exts and ext.lower() not in allowed_exts:
-            print(f"Skipping {file_path} (not in allowed_exts)")  # 🔍 DEBUG
-            continue
-
-        file_hash = compute_hash(file_path)
-        if file_hash:
-            print(f"Hash: {file_hash}")  # 🔍 DEBUG
-            store_hash_in_db(db_path, file_hash, file_path)
-
-def print_database_contents(db_path):
-    """Prints all hash → path mappings from the normalized database."""
+def export_db_to_csv(db_path, output_path):
+    """Exports the hash → path mapping to a CSV file."""
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        # Get all hashes
-        cursor.execute("SELECT hash FROM hashes")
-        hashes = cursor.fetchall()
+        cursor.execute("SELECT hash, path FROM file_paths ORDER BY hash")
+        rows = cursor.fetchall()
 
-        for (hash_val,) in hashes:
-            cursor.execute("SELECT path FROM file_paths WHERE hash = ?", (hash_val,))
-            paths = cursor.fetchall()
+        with open(output_path, "w", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["hash", "path"])  # Header
+            writer.writerows(rows)
 
-            print(f"\nHash: {hash_val}")
-            for (path,) in paths:
-                print(f"  ↳ {path}")
+        print(f"✅ Exported {len(rows)} entries to: {output_path}")
+        conn.close()
+    except Exception as e:
+        print(f"Error exporting database: {e}")
+        
+def generate_report(db_path):
+    """Generates and prints a human-readable summary of the database."""
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Total file paths
+        cursor.execute("SELECT COUNT(*) FROM file_paths")
+        total_files = cursor.fetchone()[0]
+
+        # Unique hashes
+        cursor.execute("SELECT COUNT(*) FROM hashes")
+        unique_hashes = cursor.fetchone()[0]
+
+        # Duplicate groups (hashes with more than 1 path)
+        cursor.execute("""
+            SELECT COUNT(*) FROM (
+                SELECT hash FROM file_paths
+                GROUP BY hash
+                HAVING COUNT(path) > 1
+            )
+        """)
+        duplicate_groups = cursor.fetchone()[0]
+
+        # Max number of copies for any one hash
+        cursor.execute("""
+            SELECT MAX(cnt) FROM (
+                SELECT COUNT(path) AS cnt FROM file_paths GROUP BY hash
+            )
+        """)
+        max_copies = cursor.fetchone()[0] or 0
+
+        print("\n📊 Duplicate Report")
+        print("-" * 30)
+        print(f"Total files:         {total_files}")
+        print(f"Unique hashes:       {unique_hashes}")
+        print(f"Duplicate groups:    {duplicate_groups}")
+        print(f"Most copies of one:  {max_copies}")
 
         conn.close()
     except Exception as e:
-        print(f"Error reading database: {e}")
+        print(f"Error generating report: {e}")
+
