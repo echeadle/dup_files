@@ -83,7 +83,7 @@ def test_generate_report_output():
         ], check=True)
 
         assert report_path.exists()
-        assert "Duplicate Summary" in report_path.read_text()
+        assert "Duplicate Report" in report_path.read_text()
 
 
 def test_dry_run_scan():

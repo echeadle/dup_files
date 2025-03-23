@@ -1,17 +1,19 @@
 import os
 import logging
 import sqlite3
-import csv
 from core.file_scanner import walk_files, load_filetypes
 from core.file_hasher import compute_hash
-from db_utils.db_utils import create_db, store_hash_in_db
+from db_utils.db_utils import create_db
 
 def store_batch_in_db(db_path, batch):
     """Stores a batch of (hash, path) pairs into the database."""
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
+    if not db_path:
+        return
 
     try:
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+
         for file_hash, file_path in batch:
             # Insert hash if not already present
             c.execute('INSERT OR IGNORE INTO hashes (hash) VALUES (?)', (file_hash,))
@@ -19,6 +21,7 @@ def store_batch_in_db(db_path, batch):
             c.execute('SELECT 1 FROM file_paths WHERE hash = ? AND path = ?', (file_hash, file_path))
             if not c.fetchone():
                 c.execute('INSERT INTO file_paths (hash, path) VALUES (?, ?)', (file_hash, file_path))
+
         conn.commit()
     except Exception as e:
         print(f"Error in batch insert: {e}")
@@ -28,7 +31,9 @@ def store_batch_in_db(db_path, batch):
 def find_duplicates(directory, db_path, filetypes_path=None, debug=False, batch_size=100):
     """Scans a directory, filters by filetypes, and stores hashes and paths in normalized DB."""
     allowed_exts = load_filetypes(filetypes_path) if filetypes_path else None
-    create_db(db_path)
+
+    if db_path:
+        create_db(db_path)
 
     scanned = 0
     skipped = 0
@@ -42,7 +47,7 @@ def find_duplicates(directory, db_path, filetypes_path=None, debug=False, batch_
         if allowed_exts and ext.lower() not in allowed_exts:
             skipped += 1
             if debug:
-                print(f"[SKIP] {file_path} (filtered out by extension)")
+                print(f"[SKIP] {file_path} (filtered by extension)")
             continue
 
         file_hash = compute_hash(file_path)
@@ -59,10 +64,16 @@ def find_duplicates(directory, db_path, filetypes_path=None, debug=False, batch_
     if batch:
         store_batch_in_db(db_path, batch)
 
-    print(f"\nScan complete.")
+    print("\nScan complete.")
     print(f"  Total scanned: {scanned}")
     print(f"  Skipped (filtered): {skipped}")
     print(f"  Files hashed/stored: {hashed}")
+
+    return {
+        "scanned": scanned,
+        "skipped": skipped,
+        "hashed": hashed
+    }
 
 def print_database_contents(db_path):
     """Prints all hash → path mappings from the normalized database."""
@@ -84,7 +95,6 @@ def print_database_contents(db_path):
         conn.close()
     except Exception as e:
         print(f"Error reading database: {e}")
-
 
 def generate_report(db_path):
     """Generates and prints a human-readable summary of the database."""
@@ -128,4 +138,3 @@ def generate_report(db_path):
         conn.close()
     except Exception as e:
         print(f"Error generating report: {e}")
-
