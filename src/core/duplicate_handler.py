@@ -85,25 +85,7 @@ def print_database_contents(db_path):
     except Exception as e:
         print(f"Error reading database: {e}")
 
-def export_db_to_csv(db_path, output_path):
-    """Exports the hash → path mapping to a CSV file."""
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
 
-        cursor.execute("SELECT hash, path FROM file_paths ORDER BY hash")
-        rows = cursor.fetchall()
-
-        with open(output_path, "w", newline="") as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(["hash", "path"])  # Header
-            writer.writerows(rows)
-
-        print(f"✅ Exported {len(rows)} entries to: {output_path}")
-        conn.close()
-    except Exception as e:
-        print(f"Error exporting database: {e}")
-        
 def generate_report(db_path):
     """Generates and prints a human-readable summary of the database."""
     try:
