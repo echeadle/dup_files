@@ -129,3 +129,12 @@ For more advanced features like:
 - Web-based interface to view and manage duplicates
 
 ➡️ See the [Web Viewer Interface](viewer/README.md) for more information.
+
+
+## Added --dry-run option
+
+python src/main.py ~/Downloads --db_path test.db --dry-run --debug
+
+pytest tests/test_integration.py -v -k test_dry_run_scan
+
+pytest tests/test_integration.py -v -k test_real_scan_creates_db

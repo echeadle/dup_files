@@ -1,74 +1,114 @@
 import argparse
 import os
-import sys
+import logging
 
+from core.file_scanner import (
+    walk_files,
+    load_filetypes,
+    load_excluded_dirs,
+)
+from core.file_hasher import compute_hash
 from core.duplicate_handler import (
-    find_duplicates,
+    create_db,
+    store_batch_in_db,
     print_database_contents,
-    export_db_to_csv,
     generate_report
 )
-from core.discovery import run_discovery_mode
-
 def main():
-    parser = argparse.ArgumentParser(description="Duplicate file finder with database, export, discovery, and reporting.")
+    parser = argparse.ArgumentParser(description="Duplicate File Finder")
     parser.add_argument("directory", help="Directory to scan")
-    parser.add_argument("--db_path", help="Path to SQLite database (required for most actions)")
-    parser.add_argument("--filetypes", default="filetypes.txt", help="Path to filetypes list (default: filetypes.txt)")
-    parser.add_argument("--discover", action="store_true", help="Run in discovery mode (only logs filetypes)")
-    parser.add_argument("--log-file", help="Path to log file for discovery mode (default: discovered_filetypes.log)")
-    parser.add_argument("--show-db", action="store_true", help="Print database contents and exit")
-    parser.add_argument("--export", help="Export database contents to CSV file")
-    parser.add_argument("--report", action="store_true", help="Print a duplicate summary report")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument("--db_path", help="Path to SQLite database", default="hashes.db")
+    parser.add_argument("--filetypes", help="Path to file with included file extensions (one per line)")
+    parser.add_argument("--exclude", help="Path to file with directory names to exclude")
+    parser.add_argument("--discover", action="store_true", help="Log all file types found (no hashing or DB storage)")
+    parser.add_argument("--show-db", action="store_true", help="Print contents of the database")
+    parser.add_argument("--report", action="store_true", help="Print report of duplicates")
+    parser.add_argument("--dry-run", action="store_true", help="Simulate scan without writing to the database")
+    parser.add_argument("--debug", action="store_true", help="Enable debug output")
 
     args = parser.parse_args()
 
-    if not os.path.isdir(args.directory):
-        print(f"Error: {args.directory} is not a valid directory.")
-        sys.exit(1)
-
-    # Handle CSV export
-    if args.export:
-        if not args.db_path:
-            print("Error: --db_path is required for export.")
-            sys.exit(1)
-        export_db_to_csv(args.db_path, args.export)
-        sys.exit(0)
-
-    # Handle database viewer
-    if args.show_db:
-        if not args.db_path:
-            print("Error: --db_path is required to show database contents.")
-            sys.exit(1)
-        print_database_contents(args.db_path)
-        sys.exit(0)
-
-    # Handle summary report
-    if args.report:
-        if not args.db_path:
-            print("Error: --db_path is required for report.")
-            sys.exit(1)
-        generate_report(args.db_path)
-        sys.exit(0)
-
-    # Handle discovery mode
-    if args.discover:
-        log_path = args.log_file if args.log_file else "discovered_filetypes.log"
-        run_discovery_mode(args.directory, log_file_path=log_path)
-        sys.exit(0)
-
-    # Default: scan and deduplicate
-    if not args.db_path:
-        print("Error: --db_path is required unless --discover is used.")
-        sys.exit(1)
-
-    find_duplicates(
-        directory=args.directory,
-        db_path=args.db_path,
-        filetypes_path=args.filetypes,
-        debug=args.debug
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format="%(levelname)s: %(message)s"
     )
+
+    # Load included filetypes
+    filetypes_path = args.filetypes or "config/included_filetypes.txt"
+    included_exts = load_filetypes(filetypes_path)
+    if included_exts:
+        logging.info(f"Including file extensions: {', '.join(sorted(included_exts))}")
+    else:
+        logging.info("No filetype filtering applied.")
+
+    # Load excluded directories
+    excluded_path = args.exclude or "config/excluded_dirs.txt"
+    excluded_dirs = load_excluded_dirs(excluded_path)
+    if excluded_dirs:
+        logging.info(f"Excluding directories: {', '.join(sorted(excluded_dirs))}")
+
+    # DISCOVERY MODE
+    if args.discover:
+        discovered = set()
+        for file_path in walk_files(args.directory, excluded_dirs=excluded_dirs, debug=args.debug):
+            _, ext = os.path.splitext(file_path)
+            if ext:
+                discovered.add(ext.lower())
+        with open("discovered_filetypes.log", "w") as log:
+            for ext in sorted(discovered):
+                log.write(f"{ext}\n")
+        logging.info(f"Discovered {len(discovered)} file types written to discovered_filetypes.log")
+        return
+
+    # SHOW DATABASE CONTENTS
+    if args.show_db:
+        print_database_contents(args.db_path)
+        return
+
+    # REPORT MODE
+    if args.report:
+        generate_report(args.db_path)
+        return
+
+    # DRY RUN MODE
+    if args.dry_run:
+        logging.info("⚠️ Dry run mode enabled — database will NOT be created or written to.")
+
+    else:
+        # Initialize database
+        create_db(args.db_path)
+
+    # FILE SCANNING & HASHING
+    logging.info("Starting duplicate scan...")
+
+    batch = []
+    scanned = 0
+    hashed = 0
+    skipped = 0
+
+    for file_path in walk_files(args.directory, included_exts, excluded_dirs, debug=args.debug):
+        scanned += 1
+        file_hash = compute_hash(file_path)
+        if file_hash:
+            hashed += 1
+            batch.append((file_hash, file_path))
+            if len(batch) >= 100 and not args.dry_run:
+                store_batch_in_db(args.db_path, batch)
+                batch = []
+        else:
+            skipped += 1
+
+    if batch and not args.dry_run:
+        store_batch_in_db(args.db_path, batch)
+
+    logging.info("Scan complete.")
+    logging.info(f"  Scanned: {scanned}")
+    logging.info(f"  Hashed: {hashed}")
+    logging.info(f"  Skipped (no hash or error): {skipped}")
+
+    if args.dry_run:
+        logging.info("✅ Dry run complete — no changes were written to the database.")
+
 
 if __name__ == "__main__":
     main()

@@ -102,6 +102,59 @@ def test_generate_report_output():
         assert "Duplicate Report" in result.stdout
         assert "Duplicate groups:" in result.stdout
 
+def test_dry_run_scan():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base = Path(tmpdir)
+        (base / "file1.txt").write_text("Hello")
+        (base / "file2.txt").write_text("World")
+
+        db_path = base / "should_not_exist.db"
+
+        # Run the tool with --dry-run
+        result = subprocess.run([
+            "python", "src/main.py", str(base),
+            "--db_path", str(db_path),
+            "--dry-run"
+        ], capture_output=True, text=True)
+
+        # Output should indicate dry run completed
+        assert result.returncode == 0
+        assert "Dry run complete" in result.stdout or result.stderr
+
+        # DB should NOT exist now
+        assert not db_path.exists()
+
+def test_real_scan_creates_db():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base = Path(tmpdir)
+        (base / "a.txt").write_text("File A")
+        (base / "b.txt").write_text("File B")
+
+        db_path = base / "real_scan.db"
+
+        # Run without dry-run
+        result = subprocess.run([
+            "python", "src/main.py", str(base),
+            "--db_path", str(db_path)
+        ], capture_output=True, text=True)
+
+        # Should succeed
+        assert result.returncode == 0
+
+        # DB should exist
+        assert db_path.exists()
+
+        # DB should have content
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Check if hashes were added
+        cursor.execute("SELECT COUNT(*) FROM hashes")
+        count = cursor.fetchone()[0]
+        conn.close()
+
+        assert count > 0  # Confirm at least 1 hash was written
+
 
 if __name__ == "__main__":
     test_end_to_end_duplicate_detection()
