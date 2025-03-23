@@ -138,3 +138,5 @@ python src/main.py ~/Downloads --db_path test.db --dry-run --debug
 pytest tests/test_integration.py -v -k test_dry_run_scan
 
 pytest tests/test_integration.py -v -k test_real_scan_creates_db
+
+pytest tests/integration -v
