@@ -196,3 +196,30 @@ def export_markdown():
         return PlainTextResponse("\n".join(lines), media_type="text/markdown")
     except Exception as e:
         return PlainTextResponse(str(e), status_code=500)
+
+@app.get("/config/filetypes", response_class=HTMLResponse)
+def edit_filetypes_form(request: Request):
+    file_path = BASE_DIR / "config" / "included_filetypes.txt"
+    try:
+        with open(file_path, "r") as f:
+            content = f.read()
+    except FileNotFoundError:
+        content = ""
+
+    return templates.TemplateResponse("config_editor.html", {
+        "request": request,
+        "file_content": content,
+        "msg": request.query_params.get("msg")
+    })
+
+@app.post("/config/filetypes", response_class=HTMLResponse)
+def save_filetypes_config(request: Request, content: str = Form(...)):
+    file_path = BASE_DIR / "config" / "included_filetypes.txt"
+    try:
+        with open(file_path, "w") as f:
+            f.write(content.strip() + "\n")
+        msg = "Config updated successfully!"
+    except Exception as e:
+        msg = f"Error saving config: {e}"
+
+    return RedirectResponse(url=f"/config/filetypes?msg={msg}", status_code=303)
