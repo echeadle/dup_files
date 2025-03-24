@@ -3,3 +3,5 @@
 .pdf
 .txt
 .doc
+.xml
+.png
