@@ -1,16 +1,19 @@
 import os
 import logging
 import sqlite3
+
 from core.file_scanner import walk_files, load_filetypes
 from core.file_hasher import compute_hash
 from db_utils.db_utils import create_db
-import logging
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 
 def store_batch_in_db(db_path, batch):
     """Stores a batch of (hash, path) pairs into the database."""
     if not db_path:
+        logger.warning("No database path provided. Skipping batch insert.")
         return
 
     try:
@@ -18,18 +21,18 @@ def store_batch_in_db(db_path, batch):
         c = conn.cursor()
 
         for file_hash, file_path in batch:
-            # Insert hash if not already present
             c.execute('INSERT OR IGNORE INTO hashes (hash) VALUES (?)', (file_hash,))
-            # Avoid duplicate paths
             c.execute('SELECT 1 FROM file_paths WHERE hash = ? AND path = ?', (file_hash, file_path))
             if not c.fetchone():
                 c.execute('INSERT INTO file_paths (hash, path) VALUES (?, ?)', (file_hash, file_path))
 
         conn.commit()
+        logger.info(f"✅ Stored batch of {len(batch)} entries in DB.")
     except Exception as e:
-        print(f"Error in batch insert: {e}")
+        logger.error(f"❌ Error in batch insert: {e}")
     finally:
         conn.close()
+
 
 def find_duplicates(directory, db_path, filetypes_path=None, debug=False, batch_size=100, hash_algo="md5"):
     """Scans a directory, filters by filetypes, and stores hashes and paths in normalized DB."""
@@ -50,7 +53,7 @@ def find_duplicates(directory, db_path, filetypes_path=None, debug=False, batch_
         if allowed_exts and ext.lower() not in allowed_exts:
             skipped += 1
             if debug:
-                print(f"[SKIP] {file_path} (filtered by extension)")
+                logger.debug(f"[SKIP] {file_path} (filtered by extension)")
             continue
 
         file_hash = compute_hash(file_path, hash_algo)
@@ -58,7 +61,7 @@ def find_duplicates(directory, db_path, filetypes_path=None, debug=False, batch_
             batch.append((file_hash, file_path))
             hashed += 1
             if debug:
-                print(f"[HASH] {file_path} → {file_hash}")
+                logger.debug(f"[HASH] {file_path} → {file_hash}")
 
         if len(batch) >= batch_size:
             store_batch_in_db(db_path, batch)
@@ -67,16 +70,17 @@ def find_duplicates(directory, db_path, filetypes_path=None, debug=False, batch_
     if batch:
         store_batch_in_db(db_path, batch)
 
-    print("\nScan complete.")
-    print(f"  Total scanned: {scanned}")
-    print(f"  Skipped (filtered): {skipped}")
-    print(f"  Files hashed/stored: {hashed}")
+    logger.info("✅ Scan complete.")
+    logger.info(f"  Total scanned: {scanned}")
+    logger.info(f"  Skipped (filtered): {skipped}")
+    logger.info(f"  Files hashed/stored: {hashed}")
 
     return {
         "scanned": scanned,
         "skipped": skipped,
         "hashed": hashed
     }
+
 
 def print_database_contents(db_path):
     """Prints all hash → path mappings from the normalized database."""
@@ -97,7 +101,8 @@ def print_database_contents(db_path):
 
         conn.close()
     except Exception as e:
-        print(f"Error reading database: {e}")
+        logger.error(f"Error reading database: {e}")
+
 
 def generate_report(db_path):
     """Generates and prints a human-readable summary of the database."""
@@ -105,15 +110,12 @@ def generate_report(db_path):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        # Total file paths
         cursor.execute("SELECT COUNT(*) FROM file_paths")
         total_files = cursor.fetchone()[0]
 
-        # Unique hashes
         cursor.execute("SELECT COUNT(*) FROM hashes")
         unique_hashes = cursor.fetchone()[0]
 
-        # Duplicate groups (hashes with more than 1 path)
         cursor.execute("""
             SELECT COUNT(*) FROM (
                 SELECT hash FROM file_paths
@@ -123,7 +125,6 @@ def generate_report(db_path):
         """)
         duplicate_groups = cursor.fetchone()[0]
 
-        # Max number of copies for any one hash
         cursor.execute("""
             SELECT MAX(cnt) FROM (
                 SELECT COUNT(path) AS cnt FROM file_paths GROUP BY hash
@@ -140,4 +141,4 @@ def generate_report(db_path):
 
         conn.close()
     except Exception as e:
-        print(f"Error generating report: {e}")
+        logger.error(f"Error generating report: {e}")

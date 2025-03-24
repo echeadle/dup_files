@@ -3,11 +3,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 import logging
+
 from core.duplicate_handler import (
     find_duplicates,
     print_database_contents
 )
-
 from core.discovery import run_discovery_mode
 from core.report_generator import generate_report
 from core.db_exporter import export_to_csv 
@@ -24,6 +24,8 @@ logging.basicConfig(
     ]
 )
 
+logger = logging.getLogger(__name__)
+
 def main():
     parser = argparse.ArgumentParser(description="Duplicate File Finder")
     parser.add_argument("directory", help="Directory to scan")
@@ -38,7 +40,7 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Enable debug output")
     parser.add_argument("--log-file", help="Write report output to file instead of stdout")
     parser.add_argument("--hash-algo", choices=["md5", "sha256"], default="md5",
-                    help="Hashing algorithm to use (default: md5)")
+                        help="Hashing algorithm to use (default: md5)")
 
     args = parser.parse_args()
 
@@ -67,21 +69,25 @@ def main():
             print(report)
         return
 
+    # Log hashing algorithm being used
+    logger.info(f"Using hash algorithm: {args.hash_algo.upper()}")
+
     # Actual duplicate detection
     results = find_duplicates(
         args.directory,
         db_path=None if args.dry_run else db_path,
         filetypes_path=args.filetypes,
-        debug=args.debug
+        debug=args.debug,
+        hash_algo=args.hash_algo
     )
 
-    print("\nScan complete.")
-    print(f"  Total scanned: {results['scanned']}")
-    print(f"  Skipped (filtered): {results['skipped']}")
-    print(f"  Files hashed/stored: {results['hashed']}")
+    logger.info("✅ Scan complete.")
+    logger.info(f"  Total scanned: {results['scanned']}")
+    logger.info(f"  Skipped (filtered): {results['skipped']}")
+    logger.info(f"  Files hashed/stored: {results['hashed']}")
 
     if args.dry_run:
-        print("Dry run complete. No changes saved.")
+        logger.info("Dry run complete. No changes saved.")
 
 if __name__ == "__main__":
     main()
