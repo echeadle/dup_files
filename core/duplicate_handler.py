@@ -1,7 +1,8 @@
 import os
 import logging
 import sqlite3
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
+from pathlib import Path
 
 from core.file_scanner import walk_files, load_filetypes
 from core.file_hasher import compute_hash
@@ -13,7 +14,7 @@ DEFAULT_HASH_ALGO = "md5"
 
 # --- Logging ---
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
 # --- Database Helper Functions ---
@@ -83,15 +84,14 @@ def _get_paths_for_hash(db_path: str, file_hash: str) -> List[str]:
 def find_duplicates(
     directory: str,
     db_path: str,
-    filetypes_path: str = None,
+    filetypes_path: Optional[str] = None,
     debug: bool = False,
     batch_size: int = DEFAULT_BATCH_SIZE,
     hash_algo: str = DEFAULT_HASH_ALGO,
 ) -> Dict[str, int]:
     """Scans a directory, filters by filetypes, and stores hashes and paths in a normalized DB."""
-    allowed_exts = (
-        load_filetypes(filetypes_path) if filetypes_path else None
-    )
+    allowed_exts = load_filetypes(filetypes_path) if filetypes_path else None
+    directory_path = Path(directory)
 
     if db_path:
         create_db(db_path)
@@ -101,11 +101,12 @@ def find_duplicates(
     hashed = 0
     batch: List[Tuple[str, str]] = []
 
-    for file_path in walk_files(directory):
+    for file_path in walk_files(directory_path):
         scanned += 1
-        _, ext = os.path.splitext(file_path)
+        file_path_obj = Path(file_path)
+        ext = file_path_obj.suffix.lower()
 
-        if allowed_exts and ext.lower() not in allowed_exts:
+        if allowed_exts and ext not in allowed_exts:
             skipped += 1
             if debug:
                 logger.debug(f"[SKIP] {file_path} (filtered by extension)")
