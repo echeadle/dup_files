@@ -1,9 +1,14 @@
+import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(BASE_DIR))
+
 import os
 import sqlite3
 import csv
 import io
 import shutil
-from pathlib import Path
 from typing import List, Optional
 from datetime import datetime
 
@@ -12,11 +17,11 @@ from fastapi.responses import RedirectResponse, HTMLResponse, StreamingResponse,
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from core.file_scanner import load_filetypes, walk_files
 from viewer.utils import load_duplicates
 
 app = FastAPI()
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = BASE_DIR / "viewer" / "templates"
 STATIC_DIR = BASE_DIR / "viewer" / "static"
 DEFAULT_DB_PATH = BASE_DIR / "test_hashes.db"
@@ -48,19 +53,7 @@ def home(request: Request, msg: str = None):
     path_counts = Counter(all_paths)
     duplicate_paths = set(p for p, c in path_counts.items() if c > 1)
 
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "duplicates": data,
-        "db_filename": LAST_UPLOAD_FILENAME or db_file.name,
-        "toast_msg": msg,
-        "is_uploaded": bool(LAST_UPLOAD_FILENAME),
-        "duplicate_paths": duplicate_paths,
-        "summary": {
-            "hashes": total_hashes,
-            "files": total_files,
-            "avg": avg_files_per_hash
-        }
-    })
+    return templates.TemplateResponse(request, "index.html", {"data": data, "msg": msg})
 
 
 @app.post("/upload")
@@ -88,7 +81,7 @@ def reset_to_default():
 
 @app.post("/file-action", response_class=HTMLResponse)
 async def handle_file_action(
-    name: Request,
+    request: Request,
     paths: Optional[List[str]] = Form(None),
     action: str = Form(...),
     preview: Optional[str] = Form(None),
@@ -100,11 +93,14 @@ async def handle_file_action(
 
     if preview == "true" and confirm != "true":
         # Dry-run preview mode
-        return templates.TemplateResponse("preview.html", {
-            "request": name,
-            "action": action,
-            "paths": paths
-        })
+        return templates.TemplateResponse(
+            request,
+            "preview.html",
+            {
+                "action": action,
+                "paths": paths
+            }
+        )
 
     # Confirmed: proceed with delete/export
     successful = []
@@ -206,11 +202,15 @@ def edit_filetypes_form(request: Request):
     except FileNotFoundError:
         content = ""
 
-    return templates.TemplateResponse("config_editor.html", {
-        "request": request,
-        "file_content": content,
-        "msg": request.query_params.get("msg")
-    })
+    return templates.TemplateResponse(
+        request,
+        "config_editor.html",
+        {
+            "request": request,
+            "file_content": content,
+            "msg": request.query_params.get("msg")
+        }
+    )
 
 @app.post("/config/filetypes", response_class=HTMLResponse)
 def save_filetypes_config(request: Request, content: str = Form(...)):
@@ -223,3 +223,17 @@ def save_filetypes_config(request: Request, content: str = Form(...)):
         msg = f"Error saving config: {e}"
 
     return RedirectResponse(url=f"/config/filetypes?msg={msg}", status_code=303)
+
+
+@app.get("/config/filetypes/preview")
+def preview_matching_files(dir: str):
+    filetypes = load_filetypes(BASE_DIR / "config" / "included_filetypes.txt")
+    if not os.path.isdir(dir):
+        return JSONResponse({"error": "Invalid directory"}, status_code=400)
+
+    matches = [
+        path for path in walk_files(dir)
+        if os.path.splitext(path)[1].lower() in filetypes
+    ]
+    return {"matches": matches}
+

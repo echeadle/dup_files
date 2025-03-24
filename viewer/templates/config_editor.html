@@ -1,21 +1,93 @@
-<!-- viewer/templates/config_editor.html -->
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Edit Filetypes Config</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+    <meta charset="UTF-8">
+    <title>Filetype Config Editor</title>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <h2>Edit Included Filetypes</h2>
+    <h1>Edit Included Filetypes</h1>
 
-  {% if msg %}
-    <p style="color: green;">{{ msg }}</p>
-  {% endif %}
+    {% if msg %}
+        <div class="toast">{{ msg }}</div>
+    {% endif %}
 
-  <form method="post">
-    <textarea name="content" rows="15" cols="60" required>{{ file_content }}</textarea><br><br>
-    <button type="submit">Save</button>
-    <a href="/" style="margin-left: 10px;">Cancel</a>
-  </form>
+    <form id="configForm" method="post" action="/config/filetypes">
+        <label for="content"><strong>Extensions (one per line):</strong></label><br>
+        <textarea name="content" id="content" rows="15" cols="60">{{ file_content }}</textarea><br>
+        <div id="status" style="margin: 10px 0; color: #007700;"></div>
+        <button type="submit">Save</button>
+    </form>
+
+    <hr>
+
+    <h2>🔍 Preview Matching Files</h2>
+    <input type="text" id="previewDir" placeholder="Enter directory path..." style="width: 300px;" />
+    <button onclick="previewFiles()">Preview</button>
+
+    <ul id="previewResults" style="margin-top: 10px;"></ul>
+
+    <script>
+    let timeoutId = null;
+    const textarea = document.getElementById("content");
+    const form = document.getElementById("configForm");
+    const statusDiv = document.getElementById("status");
+
+    // Autosave logic
+    textarea.addEventListener("input", () => {
+        statusDiv.textContent = "⏳ Editing...";
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            statusDiv.textContent = "💾 Saving...";
+            fetch("/config/filetypes", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ content: textarea.value })
+            })
+            .then(() => statusDiv.textContent = "✅ Autosaved")
+            .catch(() => statusDiv.textContent = "❌ Failed to save");
+        }, 2000);
+    });
+
+    // Validate before submit
+    form.addEventListener("submit", (e) => {
+        const lines = textarea.value.trim().split("\n");
+        const invalid = lines.filter(line => !line.startsWith("."));
+        if (invalid.length) {
+            e.preventDefault();
+            alert("Validation error: Each line must begin with a period (e.g. .txt, .pdf)");
+        }
+    });
+
+    // Preview matching files
+    function previewFiles() {
+        const dir = document.getElementById("previewDir").value;
+        const ul = document.getElementById("previewResults");
+        ul.innerHTML = "<li>🔄 Loading...</li>";
+
+        fetch(`/config/filetypes/preview?dir=${encodeURIComponent(dir)}`)
+            .then(res => res.json())
+            .then(data => {
+                ul.innerHTML = "";
+                if (data.error) {
+                    ul.innerHTML = `<li style="color:red;">❌ ${data.error}</li>`;
+                    return;
+                }
+
+                if (data.matches.length === 0) {
+                    ul.innerHTML = "<li>No matching files found.</li>";
+                } else {
+                    data.matches.forEach(file => {
+                        const li = document.createElement("li");
+                        li.textContent = file;
+                        ul.appendChild(li);
+                    });
+                }
+            })
+            .catch(() => {
+                ul.innerHTML = "<li style='color:red;'>❌ Failed to fetch preview</li>";
+            });
+    }
+    </script>
 </body>
 </html>

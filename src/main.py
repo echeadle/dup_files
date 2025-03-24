@@ -3,6 +3,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 import logging
+import sys
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(BASE_DIR))
+
 
 from core.duplicate_handler import (
     find_duplicates,

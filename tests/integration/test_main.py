@@ -5,7 +5,11 @@ import sys
 import os
 
 # Add src to the Python path so we can import from core
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
+#sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(BASE_DIR))
 
 # ✅ Now safe to import from core
 from core.db_exporter import export_to_csv
