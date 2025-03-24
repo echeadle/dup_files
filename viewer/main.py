@@ -53,7 +53,20 @@ def home(request: Request, msg: str = None):
     path_counts = Counter(all_paths)
     duplicate_paths = set(p for p, c in path_counts.items() if c > 1)
 
-    return templates.TemplateResponse(request, "index.html", {"data": data, "msg": msg})
+    return templates.TemplateResponse(request, "index.html", {
+        "request": request,
+        "duplicates": data,
+        "db_filename": LAST_UPLOAD_FILENAME or CURRENT_DB_PATH.name,
+        "toast_msg": msg,
+        "is_uploaded": bool(LAST_UPLOAD_FILENAME),
+        "duplicate_paths": set(),  # or the real logic
+        "summary": {
+            "hashes": len(data),
+            "files": sum(len(paths) for paths in data.values()),
+            "avg": round(sum(len(paths) for paths in data.values()) / max(len(data), 1), 2)
+        }
+    })
+
 
 
 @app.post("/upload")
