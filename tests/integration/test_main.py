@@ -118,3 +118,30 @@ def test_real_scan_creates_db():
 
         assert db_path.exists()
         assert db_path.stat().st_size > 0
+
+def test_sha256_hashing(tmp_path):
+    file1 = tmp_path / "a.txt"
+    file2 = tmp_path / "b.txt"
+    file1.write_text("hello sha256")
+    file2.write_text("hello sha256")
+
+    db_path = tmp_path / "sha256.db"
+
+    result = subprocess.run([
+        "python", "src/main.py",
+        str(tmp_path),
+        "--db_path", str(db_path),
+        "--hash-algo", "sha256"
+    ], capture_output=True, text=True)
+
+    assert result.returncode == 0, f"Process failed: {result.stderr}"
+    assert "Files hashed/stored: 2" in result.stdout
+
+    # Optional: Confirm SHA256 hashes (length = 64 hex characters)
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT hash FROM hashes")
+    hashes = [row[0] for row in c.fetchall()]
+    assert all(len(h) == 64 for h in hashes), f"Not all hashes were SHA256: {hashes}"
+    conn.close()
+

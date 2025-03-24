@@ -1,11 +1,14 @@
 import os
+import sqlite3
+import csv
+import io
 import shutil
 from pathlib import Path
 from typing import List, Optional
 from datetime import datetime
 
 from fastapi import FastAPI, Request, Form, UploadFile, File
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, StreamingResponse, PlainTextResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -85,7 +88,7 @@ def reset_to_default():
 
 @app.post("/file-action", response_class=HTMLResponse)
 async def handle_file_action(
-    request: Request,
+    name: Request,
     paths: Optional[List[str]] = Form(None),
     action: str = Form(...),
     preview: Optional[str] = Form(None),
@@ -98,7 +101,7 @@ async def handle_file_action(
     if preview == "true" and confirm != "true":
         # Dry-run preview mode
         return templates.TemplateResponse("preview.html", {
-            "request": request,
+            "request": name,
             "action": action,
             "paths": paths
         })
@@ -126,3 +129,70 @@ async def handle_file_action(
 
     return RedirectResponse(url=f"/?msg={action}", status_code=303)
 
+
+@app.get("/export/csv")
+def export_csv():
+    try:
+        conn = sqlite3.connect(CURRENT_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT hash FROM hashes")
+        hashes = cursor.fetchall()
+
+        stream = io.StringIO()
+        writer = csv.writer(stream)
+        writer.writerow(["hash", "paths"])
+
+        for (hash_val,) in hashes:
+            cursor.execute("SELECT path FROM file_paths WHERE hash = ?", (hash_val,))
+            paths = [row[0] for row in cursor.fetchall()]
+            writer.writerow([hash_val, ";".join(paths)])
+
+        stream.seek(0)
+        return StreamingResponse(stream, media_type="text/csv", headers={
+            "Content-Disposition": "attachment; filename=duplicates.csv"
+        })
+
+    except Exception as e:
+        return PlainTextResponse(str(e), status_code=500)
+
+
+@app.get("/export/json")
+def export_json():
+    try:
+        conn = sqlite3.connect(CURRENT_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT hash FROM hashes")
+        hashes = cursor.fetchall()
+
+        export_data = {}
+        for (hash_val,) in hashes:
+            cursor.execute("SELECT path FROM file_paths WHERE hash = ?", (hash_val,))
+            paths = [row[0] for row in cursor.fetchall()]
+            export_data[hash_val] = paths
+
+        return JSONResponse(content=export_data)
+    except Exception as e:
+        return PlainTextResponse(str(e), status_code=500)
+
+
+@app.get("/export/markdown")
+def export_markdown():
+    try:
+        conn = sqlite3.connect(CURRENT_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT hash FROM hashes")
+        hashes = cursor.fetchall()
+
+        lines = ["# Duplicate Summary", ""]
+
+        for (hash_val,) in hashes:
+            cursor.execute("SELECT path FROM file_paths WHERE hash = ?", (hash_val,))
+            paths = [row[0] for row in cursor.fetchall()]
+            if len(paths) > 1:
+                lines.append(f"### Hash: `{hash_val}`")
+                lines.extend([f"- {path}" for path in paths])
+                lines.append("")
+
+        return PlainTextResponse("\n".join(lines), media_type="text/markdown")
+    except Exception as e:
+        return PlainTextResponse(str(e), status_code=500)

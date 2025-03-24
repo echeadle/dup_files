@@ -4,6 +4,9 @@ import sqlite3
 from core.file_scanner import walk_files, load_filetypes
 from core.file_hasher import compute_hash
 from db_utils.db_utils import create_db
+import logging
+
+logger = logging.getLogger(__name__)
 
 def store_batch_in_db(db_path, batch):
     """Stores a batch of (hash, path) pairs into the database."""
@@ -28,7 +31,7 @@ def store_batch_in_db(db_path, batch):
     finally:
         conn.close()
 
-def find_duplicates(directory, db_path, filetypes_path=None, debug=False, batch_size=100):
+def find_duplicates(directory, db_path, filetypes_path=None, debug=False, batch_size=100, hash_algo="md5"):
     """Scans a directory, filters by filetypes, and stores hashes and paths in normalized DB."""
     allowed_exts = load_filetypes(filetypes_path) if filetypes_path else None
 
@@ -50,7 +53,7 @@ def find_duplicates(directory, db_path, filetypes_path=None, debug=False, batch_
                 print(f"[SKIP] {file_path} (filtered by extension)")
             continue
 
-        file_hash = compute_hash(file_path)
+        file_hash = compute_hash(file_path, hash_algo)
         if file_hash:
             batch.append((file_hash, file_path))
             hashed += 1

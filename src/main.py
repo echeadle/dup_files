@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 from dotenv import load_dotenv
 import os
-
+import logging
 from core.duplicate_handler import (
     find_duplicates,
     print_database_contents
@@ -14,6 +14,15 @@ from core.db_exporter import export_to_csv
 
 
 load_dotenv()  # Load variables from .env if available
+
+# Configure root logger
+logging.basicConfig(
+    level=logging.INFO,  # Change to DEBUG for more verbosity
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    handlers=[
+        logging.StreamHandler()  # Output to console
+    ]
+)
 
 def main():
     parser = argparse.ArgumentParser(description="Duplicate File Finder")
@@ -28,6 +37,8 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Simulate without saving to DB")
     parser.add_argument("--debug", action="store_true", help="Enable debug output")
     parser.add_argument("--log-file", help="Write report output to file instead of stdout")
+    parser.add_argument("--hash-algo", choices=["md5", "sha256"], default="md5",
+                    help="Hashing algorithm to use (default: md5)")
 
     args = parser.parse_args()
 

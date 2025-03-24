@@ -140,3 +140,7 @@ pytest tests/test_integration.py -v -k test_dry_run_scan
 pytest tests/test_integration.py -v -k test_real_scan_creates_db
 
 pytest tests/integration -v
+
+pytest tests/unit -v
+
+uvicorn viewer.main:app --reload
