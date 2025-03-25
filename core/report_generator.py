@@ -1,7 +1,8 @@
 import sqlite3
 import logging
 from typing import Optional
-from db.db_utils import _get_db_connection
+from db_utils.db_utils import _get_db_connection
+
 
 # --- Logging ---
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")

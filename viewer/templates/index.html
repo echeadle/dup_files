@@ -1,32 +1,88 @@
 {% extends "base.html" %}
 
-{% block title %}Home - Duplicate Viewer{% endblock %}
+{% block title %}Duplicate File Viewer{% endblock %}
 
 {% block content %}
-<h1>📁 Duplicate File Viewer</h1>
+<div class="container">
+  <div class="sidebar">
+    <h2>Duplicate Groups</h2>
+    <ul class="sidebar-list">
+      {% for hash, paths in duplicates.items() %}
+        <li class="sidebar-item" data-hash="{{ hash }}">
+          <strong>{{ hash[:8] }}</strong> ({{ paths | length }})
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
 
-{% if msg %}
-    <p style="color: green;">{{ msg }}</p>
-{% endif %}
+  <div class="main-content">
+    <h1>Duplicate File Viewer</h1>
 
-<p><strong>DB File:</strong> {{ db_filename }}</p>
-
-<h2>Summary</h2>
-<ul>
-    <li>Hashes: {{ summary.hashes }}</li>
-    <li>Total files: {{ summary.files }}</li>
-    <li>Average files per hash: {{ summary.avg }}</li>
-</ul>
-
-<h2>Duplicate Hashes</h2>
-{% for hash, paths in duplicates.items() %}
-    <div style="margin-bottom: 1rem;">
-        <strong>{{ hash }}</strong>
-        <ul>
-            {% for path in paths %}
-                <li{% if path in duplicate_paths %} style="color: red;"{% endif %}>{{ path }}</li>
-            {% endfor %}
-        </ul>
+    <!-- ✅ Search Bar + Clear Button -->
+    <div class="search-bar" style="margin-bottom: 1em;">
+      <input type="text" id="searchInput" name="search" placeholder="Search..." />
+      <button id="clearFilterBtn">Clear</button>
     </div>
-{% endfor %}
+
+    {% if toast_msg %}
+      <div class="toast">{{ toast_msg }}</div>
+    {% endif %}
+
+    <form method="post" action="/file-action">
+      <input type="hidden" name="action" value="delete" />
+      <input type="hidden" name="preview" value="true" />
+      <div class="file-groups">
+        {% for hash, paths in duplicates.items() %}
+          <div class="group">
+            <h3>{{ hash }}</h3>
+            <ul>
+              {% for path in paths %}
+                <li>
+                  <label>
+                    <input type="checkbox" name="paths" value="{{ path }}" />
+                    {{ path }}
+                    {% if path in duplicate_paths %}
+                      <span class="warning">(also appears elsewhere)</span>
+                    {% endif %}
+                  </label>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endfor %}
+      </div>
+      <button type="submit">Preview Delete</button>
+    </form>
+
+    <div class="summary">
+      <h3>Summary</h3>
+      <p>Hashes: {{ summary.hashes }}<br>
+         Files: {{ summary.files }}<br>
+         Avg files/hash: {{ summary.avg }}</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // 🔍 Filter file groups by search input
+  const searchInput = document.getElementById("searchInput");
+  const clearBtn = document.getElementById("clearFilterBtn");
+  const groups = document.querySelectorAll(".group");
+
+  function filterGroups() {
+    const query = searchInput.value.toLowerCase();
+    groups.forEach(group => {
+      const match = group.textContent.toLowerCase().includes(query);
+      group.style.display = match ? "block" : "none";
+    });
+  }
+
+  searchInput?.addEventListener("input", filterGroups);
+  clearBtn?.addEventListener("click", () => {
+    searchInput.value = "";
+    filterGroups();
+  });
+</script>
 {% endblock %}
