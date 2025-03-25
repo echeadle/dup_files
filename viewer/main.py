@@ -280,3 +280,11 @@ def preview_matching_files(dir: str):
         if os.path.splitext(path)[1].lower() in filetypes
     ]
     return {"matches": matches}
+
+@app.get("/preview", response_class=HTMLResponse)
+def view_preview_page(request: Request):
+    return templates.TemplateResponse(request, "preview.html", {
+        "request": request,
+        "action": "none",
+        "paths": []
+    })
