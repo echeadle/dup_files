@@ -115,3 +115,7 @@ def test_excluded_dirs_editor_renders():
     assert response.status_code == 200
     assert "Excluded Directory Editor" in response.text
 
+def test_reset_redirects_to_home():
+    response = client.get("/reset")
+    assert response.status_code == 200
+    assert "Viewer reset successfully." in response.text
