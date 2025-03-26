@@ -109,3 +109,9 @@ def export_markdown():
             )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+def test_excluded_dirs_editor_renders():
+    response = client.get("/config/excludes")
+    assert response.status_code == 200
+    assert "Excluded Directory Editor" in response.text
+

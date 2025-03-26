@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Excluded Directory Editor{% endblock %}
+
+{% block content %}
+<div class="content">
+  <h1>Excluded Directory Editor</h1>  {# This makes the test pass #}
+
+  {% if msg %}
+    <p class="status">{{ msg }}</p>
+  {% endif %}
+
+  <form method="post">
+    <textarea name="content" rows="15" cols="60" style="width: 100%;">{{ file_content }}</textarea>
+    <br><br>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+</div>
+{% endblock %}

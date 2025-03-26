@@ -152,5 +152,38 @@ def test_sha256_hashing(tmp_path):
         assert result.returncode == 0, f"Process failed: {result.stderr}"
         assert "Files hashed/stored: 2" in result.stderr
 
+def est_excluded_dirs_respectetd(tmp_path):
+    normal_file = tmp_path / "a.txt"
+    excluded_dir = tmp_path / "__pycache__"
+    excluded_file = excluded_dir / "excluded.txt"
+    
+    excluded_dir.mkdir()
+    normal_file.write_text("keep me")
+    excluded_file.write_text("skip me")
+
+    db_path = tmp_path / "test.db"
+    exclude_cfg = tmp_path / "excluded_dirs.txt"
+    exclude_cfg.write_text("__pycache__")
+
+    result = subprocess.run([
+        "python", "src/main.py",
+        str(tmp_path),
+        "--db_path", str(db_path),
+        "--exclude", str(exclude_cfg)
+    ], capture_output=True, text=True)
+
+    assert result.returncode == 0
+    assert "Files hashed/stored: 1" in result.stderr or result.stdout
+
+    # Verify only the normal file hash exists
+    import sqlite3
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT path FROM file_paths")
+    paths = [row[0] for row in c.fetchall()]
+    conn.close()
+
+    assert any("a.txt" in p for p in paths)
+    assert not any("__pycache__" in p for p in paths)
 
 

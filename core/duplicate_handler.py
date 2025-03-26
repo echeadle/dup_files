@@ -4,7 +4,7 @@ import sqlite3
 from typing import List, Tuple, Dict, Optional
 from pathlib import Path
 
-from core.file_scanner import walk_files, load_filetypes
+from core.file_scanner import walk_files, load_filetypes, load_excluded_dirs
 from core.file_hasher import compute_hash
 from db_utils.db_utils import create_db
 
@@ -85,12 +85,14 @@ def find_duplicates(
     directory: str,
     db_path: str,
     filetypes_path: Optional[str] = None,
+    excluded_dirs_path: Optional[str] = None,
     debug: bool = False,
     batch_size: int = DEFAULT_BATCH_SIZE,
     hash_algo: str = DEFAULT_HASH_ALGO,
 ) -> Dict[str, int]:
-    """Scans a directory, filters by filetypes, and stores hashes and paths in a normalized DB."""
+    """Scans a directory, filters by filetypes and exclusions, and stores hashes and paths in a normalized DB."""
     allowed_exts = load_filetypes(filetypes_path) if filetypes_path else None
+    excluded_dirs = load_excluded_dirs(excluded_dirs_path) if excluded_dirs_path else None
     directory_path = Path(directory)
 
     if db_path:
@@ -101,7 +103,7 @@ def find_duplicates(
     hashed = 0
     batch: List[Tuple[str, str]] = []
 
-    for file_path in walk_files(directory_path):
+    for file_path in walk_files(directory_path, allowed_exts, excluded_dirs, debug):
         scanned += 1
         file_path_obj = Path(file_path)
         ext = file_path_obj.suffix.lower()

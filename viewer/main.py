@@ -28,6 +28,7 @@ DEFAULT_DB_PATH = BASE_DIR / "test_hashes.db"
 UPLOAD_DIR = BASE_DIR / "uploaded"
 EXPORT_DIR = BASE_DIR / "exported"
 FILETYPES_CONFIG_PATH = BASE_DIR / "config" / "included_filetypes.txt"
+EXCLUDED_DIRS_PATH = BASE_DIR / "config" / "excluded_dirs.txt"
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 EXPORT_DIR.mkdir(exist_ok=True)
@@ -317,3 +318,41 @@ def view_preview_page(request: Request):
         "action": "none",
         "paths": []
     })
+
+EXCLUDED_DIRS_PATH = BASE_DIR / "config" / "excluded_dirs.txt"
+
+@app.get("/config/excludes", response_class=HTMLResponse)
+def edit_excludes_form(request: Request):
+    try:
+        with open(EXCLUDED_DIRS_PATH, "r") as f:
+            content = f.read()
+    except FileNotFoundError:
+        content = ""
+
+    return templates.TemplateResponse(
+        request,
+        "config_excludes.html",
+        {
+            "request": request,
+            "file_content": content,
+            "msg": request.query_params.get("msg")
+        },
+    )
+
+@app.post("/config/excludes", response_class=HTMLResponse)
+def save_excludes_config(request: Request, content: str = Form(...)):
+    try:
+        with open(EXCLUDED_DIRS_PATH, "w") as f:
+            f.write(content.strip() + "\n")
+        msg = "Excluded directories updated!"
+    except Exception as e:
+        msg = f"Error saving file: {e}"
+
+    return RedirectResponse(url=f"/config/excludes?msg={msg}", status_code=303)
+
+from fastapi.responses import RedirectResponse
+
+@app.get("/reset", response_class=HTMLResponse)
+def reset_home_view():
+    return RedirectResponse(url="/?msg=reset", status_code=303)
+

@@ -20,6 +20,7 @@ from core.db_exporter import export_to_csv
 
 load_dotenv()  # Load variables from .env if available
 
+
 # Configure root logger
 logging.basicConfig(
     level=logging.INFO,  # Change to DEBUG for more verbosity
@@ -83,7 +84,8 @@ def main():
         db_path=None if args.dry_run else db_path,
         filetypes_path=args.filetypes,
         debug=args.debug,
-        hash_algo=args.hash_algo
+        hash_algo=args.hash_algo,
+        excluded_dirs_path=args.exclude 
     )
 
     logger.info("✅ Scan complete.")
