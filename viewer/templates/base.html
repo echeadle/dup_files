@@ -2,75 +2,38 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Duplicate File Viewer{% endblock %}</title>
+    <title>Duplicate File Viewer</title>
     <link rel="stylesheet" href="/static/styles.css">
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-        }
-
-        .container {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        .sidebar {
-            width: 250px;
-            background-color: #f5f5f5;
-            padding: 20px;
-            border-right: 1px solid #ddd;
-        }
-
-        .sidebar h2 {
-            margin-top: 0;
-        }
-
-        .sidebar ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .sidebar ul li {
-            margin: 10px 0;
-        }
-
-        .sidebar ul li a {
-            text-decoration: none;
-            color: #333;
-        }
-
-        .sidebar ul li a:hover {
-            text-decoration: underline;
-        }
-
-        .content {
-            flex: 1;
-            padding: 20px;
-        }
-
-        .toast {
-            background: #e7f4e4;
-            padding: 10px;
-            border-left: 5px solid #4caf50;
-            margin-bottom: 20px;
-            color: #2e7d32;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar">
-            <h2>🔧 Navigation</h2>
-            <ul>
-                <li><a href="/">🔍 Duplicate Viewer</a></li>
-                <li><a href="/preview">🧪 Preview Page</a></li>
-                <li><a href="/config/filetypes">⚙️ Filetypes Config</a></li>
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h2>Navigation</h2>
+            <ul class="sidebar-links">
+                <li><a href="/">🏠 Home</a></li>
+                <li><a href="/preview">👀 Preview</a></li>
+                <li><a href="/config/filetypes">⚙️ Filetype Config</a></li>
             </ul>
-        </aside>
-        <main class="content">
-            {% block content %}{% endblock %}
-        </main>
+
+            <hr>
+
+            <h3>Download Reports</h3>
+            <ul class="sidebar-links">
+                <li><a href="/export/csv" download>📄 Export as CSV</a></li>
+                <li><a href="/export/json" download>🧩 Export as JSON</a></li>
+                <li><a href="/export/markdown" download>📝 Export as Markdown</a></li>
+            </ul>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            {% if msg %}
+                <div class="toast">{{ msg }}</div>
+            {% endif %}
+            {% block content %}
+            {% endblock %}
+        </div>
     </div>
 </body>
 </html>

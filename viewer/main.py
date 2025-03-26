@@ -10,7 +10,7 @@ from datetime import datetime
 from collections import Counter
 
 from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
-from fastapi.responses import RedirectResponse, HTMLResponse, StreamingResponse, PlainTextResponse, JSONResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, StreamingResponse, PlainTextResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -178,11 +178,14 @@ def export_csv():
                 writer.writerow([hash_val, ";".join(paths)])
 
             stream.seek(0)
+            now = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+            filename = f"exports-{now}.csv"
+
             return StreamingResponse(
                 stream,
                 media_type="text/csv",
                 headers={
-                    "Content-Disposition": "attachment; filename=duplicates.csv"
+                    "Content-Disposition": f'attachment; filename="{filename}"'
                 },
             )
     except Exception as e:
@@ -206,10 +209,25 @@ def export_json():
                 paths = [row[0] for row in cursor.fetchall()]
                 export_data[hash_val] = paths
 
-            return JSONResponse(content=export_data)
+            now = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+            filename = f"exports-{now}.json"
+            headers = {
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+
+            return JSONResponse(content=export_data, headers=headers)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+
+from fastapi.responses import StreamingResponse
+from datetime import datetime
+import io
+
+from fastapi.responses import StreamingResponse
+from datetime import datetime
+import io
 
 @app.get("/export/markdown")
 def export_markdown():
@@ -220,19 +238,30 @@ def export_markdown():
             cursor.execute("SELECT hash FROM hashes")
             hashes = cursor.fetchall()
 
-            lines = ["# Duplicate Summary", ""]
+            stream = io.StringIO()
+            stream.write("# Duplicate Summary\n\n")
+
             for (hash_val,) in hashes:
                 cursor.execute(
                     "SELECT path FROM file_paths WHERE hash = ?", (hash_val,)
                 )
                 paths = [row[0] for row in cursor.fetchall()]
                 if len(paths) > 1:
-                    lines.append(f"### Hash: `{hash_val}`")
-                    lines.extend([f"- {path}" for path in paths])
-                    lines.append("")
+                    stream.write(f"### Hash: `{hash_val}`\n")
+                    for path in paths:
+                        stream.write(f"- {path}\n")
+                    stream.write("\n")
 
-            return PlainTextResponse(
-                "\n".join(lines), media_type="text/markdown"
+            stream.seek(0)
+            now = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+            filename = f"exports-{now}.md"
+
+            return StreamingResponse(
+                stream,
+                media_type="text/markdown",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"'
+                },
             )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

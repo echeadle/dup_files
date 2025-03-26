@@ -1,8 +1,16 @@
+import re
 from fastapi.testclient import TestClient
+from fastapi import HTTPException
 from viewer.main import app
 from bs4 import BeautifulSoup
+from pathlib import Path
+import sqlite3
 
 client = TestClient(app)
+
+def _get_db_connection(db_path: Path) -> sqlite3.Connection:
+    """Establishes a connection to the database."""
+    return sqlite3.connect(db_path)
 
 def test_homepage_renders():
     response = client.get("/")
@@ -49,3 +57,55 @@ def test_clear_filter_button_present():
     soup = BeautifulSoup(response.text, "html.parser")
     button = soup.find("button", string=lambda t: t and "Clear" in t)
     assert button is not None
+    
+def test_sidebar_contains_report_links():
+    response = client.get("/")
+    soup = BeautifulSoup(response.text, "html.parser")
+    links = soup.select("ul.sidebar-links a")
+
+    expected_routes = ["/export/csv", "/export/json", "/export/markdown"]
+    found_routes = [link["href"] for link in links]
+
+    for route in expected_routes:
+        assert route in found_routes, f"Missing link: {route}"
+
+from fastapi.responses import StreamingResponse
+from datetime import datetime
+import io
+
+@app.get("/export/markdown")
+def export_markdown():
+    """Exports duplicate data to a Markdown file."""
+    try:
+        with _get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT hash FROM hashes")
+            hashes = cursor.fetchall()
+
+            stream = io.StringIO()
+            stream.write("# Duplicate Summary\n\n")
+
+            for (hash_val,) in hashes:
+                cursor.execute(
+                    "SELECT path FROM file_paths WHERE hash = ?", (hash_val,)
+                )
+                paths = [row[0] for row in cursor.fetchall()]
+                if len(paths) > 1:
+                    stream.write(f"### Hash: `{hash_val}`\n")
+                    for path in paths:
+                        stream.write(f"- {path}\n")
+                    stream.write("\n")
+
+            stream.seek(0)
+            now = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+            filename = f"exports-{now}.md"
+
+            return StreamingResponse(
+                stream,
+                media_type="text/markdown",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"'
+                },
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
