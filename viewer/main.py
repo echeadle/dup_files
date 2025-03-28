@@ -350,9 +350,15 @@ def save_excludes_config(request: Request, content: str = Form(...)):
 
     return RedirectResponse(url=f"/config/excludes?msg={msg}", status_code=303)
 
-from fastapi.responses import RedirectResponse
 
 @app.get("/reset", response_class=HTMLResponse)
-def reset_home_view():
-    return RedirectResponse(url="/?msg=reset", status_code=303)
+def reset_viewer(request: Request):
+    return templates.TemplateResponse(request, "index.html", {
+        "duplicates": {},
+        "duplicate_paths": [],
+        "summary": {"hashes": 0, "files": 0, "avg": 0},
+        "toast_msg": "Screen reset. No data displayed."
+    })
+
+
 

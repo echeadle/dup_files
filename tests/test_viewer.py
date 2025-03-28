@@ -118,4 +118,11 @@ def test_excluded_dirs_editor_renders():
 def test_reset_redirects_to_home():
     response = client.get("/reset")
     assert response.status_code == 200
-    assert "Viewer reset successfully." in response.text
+
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    toast = soup.select_one("div.toast")
+    assert toast is not None
+    assert "Screen reset. No data displayed." in toast.text
+

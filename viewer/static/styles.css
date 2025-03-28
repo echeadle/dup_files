@@ -1,54 +1,113 @@
 body {
-    font-family: Arial, sans-serif;
+    font-family: sans-serif;
     margin: 0;
-    background-color: #f9f9f9;
-}
-
-.container {
+    padding: 0;
+    background-color: #f8f8f8;
+  }
+  
+  .container {
     display: flex;
     min-height: 100vh;
-}
-
-.sidebar {
-    width: 240px;
+  }
+  
+  .sidebar {
+    width: 260px;
     background-color: #2c3e50;
-    color: white;
-    padding: 20px;
-}
-
-.sidebar h2, .sidebar h3 {
-    font-size: 1.2rem;
-    margin-bottom: 10px;
-}
-
-.sidebar-links {
-    list-style: none;
-    padding-left: 0;
-}
-
-.sidebar-links li {
-    margin-bottom: 10px;
-}
-
-.sidebar-links a {
     color: #ecf0f1;
-    text-decoration: none;
-}
-
-.sidebar-links a:hover {
-    text-decoration: underline;
-}
-
-.main-content {
-    flex: 1;
-    padding: 30px;
-    background-color: white;
-}
-
-.toast {
-    background-color: #2ecc71;
-    color: white;
-    padding: 10px 15px;
-    margin-bottom: 20px;
+    padding: 1rem;
+  }
+  
+  .sidebar h2 {
+    color: #ecf0f1;
+    font-size: 1.2em;
+    margin-bottom: 1rem;
+  }
+  
+  .sidebar-list {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .sidebar-item {
+    margin: 0.5rem 0;
+    padding: 0.3rem 0.5rem;
+    cursor: pointer;
     border-radius: 4px;
-}
+    color: #ecf0f1; /* Light font color */
+    text-decoration: none; /* No underline */
+  }
+  
+  .sidebar-item:hover {
+    background-color: #34495e;
+    color: #ffffff;
+  }
+  
+  .main-content {
+    flex: 1;
+    padding: 2rem;
+    background-color: #ffffff;
+  }
+  
+  .page-title {
+    margin-top: 0;
+  }
+  
+  .file-groups .group {
+    margin-bottom: 2rem;
+  }
+  
+  .warning {
+    color: red;
+    font-style: italic;
+  }
+  
+  .toast {
+    background-color: #ffe4b3;
+    padding: 0.75rem;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    margin-bottom: 1em;
+  }
+  
+  .summary {
+    margin-top: 2em;
+  }
+  
+  .hidden {
+    display: none !important;
+  }
+  
+  /* Buttons */
+  button,
+  .btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: 4px;
+  }
+  
+  .btn-primary {
+    background-color: #3498db;
+    color: #fff;
+  }
+  
+  .btn-danger {
+    background-color: #e74c3c;
+    color: #fff;
+  }
+  
+  .btn-secondary {
+    background-color: #7f8c8d;
+    color: #fff;
+  }
+  
+  .search-bar input {
+    padding: 0.5rem;
+    width: 200px;
+  }
+  
+  .search-bar button {
+    margin-left: 0.5rem;
+  }
+  

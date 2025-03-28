@@ -4,19 +4,23 @@
 
 {% block content %}
 <div class="container">
-  <div class="sidebar">
-    <h2>Duplicate Groups</h2>
-    <ul class="sidebar-list">
-      {% for hash, paths in duplicates.items() %}
-        <li class="sidebar-item" data-hash="{{ hash }}">
-          <strong>{{ hash[:8] }}</strong> ({{ paths | length }})
-        </li>
-      {% endfor %}
-    </ul>
-  </div>
+  <div class="sidebar" id="duplicateGroupsSidebar">  <!-- Added ID: duplicateGroupsSidebar -->
+    <div id="duplicateGroupsContainer">
+      <button id="toggleSidebarBtn" class="btn btn-secondary" style="margin-bottom: 1rem;">Hide Groups</button>
+      <h2>Duplicate Groups</h2>
+      <ul class="sidebar-list">
+        {% for hash, paths in duplicates.items() %}
+          <li class="sidebar-item" data-hash="{{ hash }}">
+            <strong>{{ hash[:8] }}</strong> ({{ paths | length }})
+          </li>
+        {% endfor %}
+      </ul>
+     </div>
+   </div>
 
   <div class="main-content">
-    <h1>Duplicate File Viewer</h1>
+    <h1 class="page-title">Duplicate File Viewer</h1>
+    <a href="/reset" class="btn btn-danger" style="margin-bottom: 1em;">Reset Viewer</a>
 
     <!-- ✅ Search Bar + Clear Button -->
     <div class="search-bar" style="margin-bottom: 1em;">
@@ -66,23 +70,37 @@
 
 {% block scripts %}
 <script>
-  // 🔍 Filter file groups by search input
-  const searchInput = document.getElementById("searchInput");
-  const clearBtn = document.getElementById("clearFilterBtn");
-  const groups = document.querySelectorAll(".group");
+    // 🔍 Filter file groups by search input
+    const searchInput = document.getElementById("searchInput");
+    const clearBtn = document.getElementById("clearFilterBtn");
+    const groups = document.querySelectorAll(".group");
 
-  function filterGroups() {
-    const query = searchInput.value.toLowerCase();
-    groups.forEach(group => {
-      const match = group.textContent.toLowerCase().includes(query);
-      group.style.display = match ? "block" : "none";
+    function filterGroups() {
+        const query = searchInput.value.toLowerCase();
+        groups.forEach(group => {
+            const match = group.textContent.toLowerCase().includes(query);
+            group.style.display = match ? "block" : "none";
+        });
+    }
+
+    searchInput?.addEventListener("input", filterGroups);
+    clearBtn?.addEventListener("click", () => {
+        searchInput.value = "";
+        filterGroups();
     });
-  }
 
-  searchInput?.addEventListener("input", filterGroups);
-  clearBtn?.addEventListener("click", () => {
-    searchInput.value = "";
-    filterGroups();
-  });
+    // 🎛 Toggle sidebar visibility
+    const sidebar = document.getElementById("duplicateGroupsSidebar"); // Changed to target the ID
+    const toggleBtn = document.getElementById("toggleSidebarBtn");
+
+    toggleBtn?.addEventListener("click", () => {
+        if (sidebar.classList.contains("hidden")) {
+            sidebar.classList.remove("hidden");
+            toggleBtn.textContent = "Hide Groups";
+        } else {
+            sidebar.classList.add("hidden");
+            toggleBtn.textContent = "Show Groups";
+        }
+    });
 </script>
 {% endblock %}

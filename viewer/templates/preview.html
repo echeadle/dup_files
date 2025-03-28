@@ -1,27 +1,20 @@
 {% extends "base.html" %}
-
 {% block title %}Preview Action{% endblock %}
 
 {% block content %}
-<h1>🕵️ Preview Action</h1>
-
-<p><strong>Action:</strong> {{ action }}</p>
+<h2>Preview {{ action.capitalize() }} Action</h2>
 
 <form method="post" action="/file-action">
-    <input type="hidden" name="action" value="{{ action }}">
-    <input type="hidden" name="preview" value="true">
-    <input type="hidden" name="confirm" value="true">
-
-    <ul>
-        {% for path in paths %}
-            <li>
-                <input type="hidden" name="paths" value="{{ path }}">
-                {{ path }}
-            </li>
-        {% endfor %}
-    </ul>
-
-    <button type="submit">✅ Confirm {{ action }}</button>
-    <a href="/" style="margin-left: 1rem;">Cancel</a>
+  <input type="hidden" name="action" value="{{ action }}">
+  <input type="hidden" name="preview" value="true">
+  <input type="hidden" name="confirm" value="true">
+  <ul class="file-list">
+    {% for path in paths %}
+      <li>{{ path }}</li>
+      <input type="hidden" name="paths" value="{{ path }}">
+    {% endfor %}
+  </ul>
+  <br>
+  <button type="submit" class="btn btn-danger">Confirm {{ action.capitalize() }}</button>
 </form>
 {% endblock %}

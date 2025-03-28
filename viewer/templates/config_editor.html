@@ -1,65 +1,16 @@
 {% extends "base.html" %}
-
-{% block title %}Filetypes Config Editor{% endblock %}
+{% block title %}Filetype Config Editor{% endblock %}
 
 {% block content %}
-  <h1>Edit Included Filetypes</h1>
+<h2>Edit File Types</h2>
 
-  {% if msg %}
-    <p style="color: green;">{{ msg }}</p>
-  {% endif %}
+{% if msg %}
+  <p class="status">{{ msg }}</p>
+{% endif %}
 
-  <form method="post">
-    <textarea name="content" rows="10" cols="50">{{ file_content }}</textarea><br>
-    <button type="submit">Save</button>
-  </form>
-
-  <hr>
-
-  <h2>Preview Matching Files</h2>
-  <input type="text" id="previewDir" placeholder="Enter directory path">
-  <button onclick="previewMatches()">Preview Matches</button>
-
-  <div id="previewResults" class="matches" style="display: none;">
-    <h3>Matching Files</h3>
-    <ul id="matchList"></ul>
-  </div>
-
-  <script>
-    async function previewMatches() {
-      const dir = document.getElementById('previewDir').value;
-      const resultBox = document.getElementById('previewResults');
-      const matchList = document.getElementById('matchList');
-
-      matchList.innerHTML = '';
-      resultBox.style.display = 'none';
-
-      if (!dir) {
-        alert("Please enter a directory path.");
-        return;
-      }
-
-      try {
-        const response = await fetch(`/config/filetypes/preview?dir=${encodeURIComponent(dir)}`);
-        if (!response.ok) {
-          throw new Error("Error: " + response.statusText);
-        }
-
-        const data = await response.json();
-        if (data.matches.length === 0) {
-          matchList.innerHTML = "<li><em>No matching files found.</em></li>";
-        } else {
-          data.matches.forEach(path => {
-            const li = document.createElement("li");
-            li.textContent = path;
-            matchList.appendChild(li);
-          });
-        }
-
-        resultBox.style.display = "block";
-      } catch (err) {
-        alert("Failed to preview matches:\n" + err.message);
-      }
-    }
-  </script>
+<form method="post">
+  <textarea name="content" rows="15" class="config-textarea">{{ file_content }}</textarea>
+  <br><br>
+  <button type="submit" class="btn btn-primary">Save</button>
+</form>
 {% endblock %}
